@@ -79,6 +79,7 @@ void saveSearchResult(SearchResultNode* lp, SearchResults* mp)
 	//make a new list element
 	//put mp in that
 	//attach the new list element to the existing list
+
 	if(isSearchLLEmpty(lp))
 	{
 		lp->searchP = mp;
