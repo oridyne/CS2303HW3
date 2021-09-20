@@ -77,45 +77,6 @@ bool production(int argc, char* argv[])
 				break;
 			}//end of switch
 		} //end of for loop on argument count
-
-        // get max treasure and max rooms if not supplied
-        if(argc != 4) {
-            char inStr[6];
-            // if maxRooms still is <= 0 prompt user for maxRooms
-            while(maxRooms <= 0 ) {
-                printf("Input Max Rooms: ");
-                fgets(inStr, sizeof(inStr), stdin);
-                // check for newline at end of input
-                if (inStr[strlen(inStr) - 1] == '\n') {
-                    aL= strtol(inStr, NULL, 10);
-                    maxRooms = (int) aL;
-                    printf("Number of rooms is %d\n",maxRooms);
-                    fflush(stdout);
-                } else {
-                    printf("The input was too long.\n");
-                    // Clear buffer (I don't like fflush)
-                    char c = 'a';
-                    while ((c = (char) getchar()) != '\n' && c != EOF) {}
-                }
-            }
-            // if maxTreasure still is <=0  prompt user for treasure
-            while(maxTreasure <= 0) {
-                printf("Input Max Treasure: ");
-                fgets(inStr, sizeof(inStr), stdin);
-                // check for newline at end of input
-                if (inStr[strlen(inStr) - 1] == '\n') {
-                    maxTreas = strtod(inStr, NULL);
-                    maxTreasure = (float) maxTreas;
-                    printf("Amount of  treasure is %f\n",maxTreas);
-                    fflush(stdout);
-                } else {
-                    printf("The input was too long.\n");
-                    // Clear buffer (I don't like fflush)
-                    char c = 'a';
-                    while ((c = (char) getchar()) != '\n' && c != EOF) {}
-                }
-            }
-        }
 		puts("after reading arguments"); fflush(stdout);
 		//we'll want to read the file
 		int nrooms = -1;
@@ -126,8 +87,25 @@ bool production(int argc, char* argv[])
 		puts("Before read file"); fflush(stdout);
 		answer = readFile(filename, &nrooms, adjMP, theRoomPs); //read the file
 		puts("Back from read file"); fflush(stdout);
+
 		// make sure read file is successful
         if(answer) {
+            // get max treasure and max rooms if not supplied
+            if(argc != 4) {
+                getInputArgs(&maxRooms, &maxTreas, &maxTreasure);
+            }
+            float fileMaxTres = 0;
+            for(int i = 0; i < nrooms; i++) {
+                fileMaxTres += theRoomPs[i]->treasure;
+            }
+            if(maxRooms > nrooms) {
+                printf("maxRooms (%d) is larger than maximum rooms from file (%d) \nSetting max rooms to %d\n",maxRooms,nrooms, nrooms);
+                maxRooms = nrooms;
+            }
+            if(maxTreasure > fileMaxTres) {
+                printf("maxTreasure (%f) is larger than maximum treasure from file (%f)\nSetting max treasure to %f\n",maxTreasure,fileMaxTres, fileMaxTres);
+                maxTreasure = fileMaxTres;
+            }
             //we'll want to conduct the search
             //for the search we'll need an empty search history
             SearchResultNode* historyP = makeEmptySearchLL();
@@ -143,87 +121,97 @@ bool production(int argc, char* argv[])
             roomBeingSearchedP->searched = true;
             // we record it in the history
             SearchResults* srP = NULL;
-            if((roomBeingSearchedP->treasure <= maxTreas) && (maxRooms > 0)) {
+            if((roomBeingSearchedP->treasure <= maxTreasure) && (maxRooms > 0)) {
                 srP = (SearchResults*) malloc(sizeof(SearchResults));
                 srP->roomNumber= 0;
                 srP->treasure = roomBeingSearchedP->treasure;
                 //we searched room 0, so it should be enqueued onto the history,
                 //and not onto the "things-to-do" queue
-                saveSearchResult(historyP, srP);//here we are enqueueing room 0
                 puts("Enqueuing room 0");
+                saveSearchResult(historyP, srP);//here we are enqueueing room 0
                 foundTreasure = roomBeingSearchedP->treasure;
                 searchedRooms = 1;
-                // search the rest
-                while(!done)
-                {   //here we want to find all of the rooms adjacent to the roomBeingSearched,
-                    //so we look in the adj matrix
-                    for(int col = 0; (col<nrooms) && !done; col++)
-                    {
-                        //we check whether this room is neighboring
-                        printf("checking rooms %d and %d.\n", roomBeingSearchedP->roomNumber, col); fflush(stdout);
-                        if(getEdge(adjMP,roomBeingSearchedP->roomNumber, col) == 1) {
-                            puts("found an edge"); fflush(stdout);
-                            //if so, we check whether room has been searched
-                            if(!(theRoomPs[col]->searched))
-                            {//if it hasn't been searched
-                                printf("Room %d hasn't already been searched.\n", col);
-                                //we set it to searched
-                                theRoomPs[col]->searched=true;
-                                if(((foundTreasure + theRoomPs[col]->treasure) <= maxTreasure) && (searchedRooms < maxRooms))
-                                    //we check whether we can take the treasure vs. limit
-                                    //we check whether we've hit the room limit
-                                { //we enqueue it for search
-                                    foundTreasure += theRoomPs[col]->treasure;
-                                    searchedRooms++;
-                                    printf("found treasure updated to %f.\n", foundTreasure);
-                                    printf("enqueuing room %d.\n", col); fflush(stdout);
-                                    printf("Before enqueuing queue empty reports %d\n", isRoomLLEmpty(searchQ));
-                                    saveRoom(searchQ, theRoomPs[col]);
-                                    srP = (SearchResults*) malloc(sizeof(SearchResults));
-                                    srP->roomNumber=theRoomPs[col]->roomNumber;
-                                    srP->treasure = theRoomPs[col]->treasure;
-                                    saveSearchResult(historyP, srP);
-                                    printf("After enqueuing, queue empty reports %d\n", isRoomLLEmpty(searchQ));
-                                }//check about search limits
-                            }//room can still be searched
-                        }//room is a neighbor
+            }
+            // search the rest
+            while(!done)
+            {   //here we want to find all of the rooms adjacent to the roomBeingSearched,
+                //so we look in the adj matrix
+                for(int col = 0; (col<nrooms) && !done; col++)
+                {
+                    //we check whether this room is neighboring
+                    printf("checking rooms %d and %d.\n", roomBeingSearchedP->roomNumber, col); fflush(stdout);
+                    if(getEdge(adjMP,roomBeingSearchedP->roomNumber, col) == 1) {
+                        puts("found an edge"); fflush(stdout);
+                        //if so, we check whether room has been searched
+                        if(!(theRoomPs[col]->searched))
+                        {//if it hasn't been searched
+                            printf("Room %d hasn't already been searched.\n", col);
+                            //we set it to searched
+                            theRoomPs[col]->searched=true;
+                            if(((foundTreasure + theRoomPs[col]->treasure) <= maxTreasure) && (searchedRooms < maxRooms))
+                                //we check whether we can take the treasure vs. limit
+                                //we check whether we've hit the room limit
+                            { //we enqueue it for search
+                                foundTreasure += theRoomPs[col]->treasure;
+                                searchedRooms++;
+                                printf("found treasure updated to %f.\n", foundTreasure);
+                                printf("enqueuing room %d.\n", col); fflush(stdout);
+                                printf("Before enqueuing queue empty reports %d\n", isRoomLLEmpty(searchQ));
+                                saveRoom(searchQ, theRoomPs[col]);
+                                srP = (SearchResults*) malloc(sizeof(SearchResults));
+                                srP->roomNumber = theRoomPs[col]->roomNumber;
+                                srP->treasure = theRoomPs[col]->treasure;
+                                saveSearchResult(historyP, srP);
+                                printf("After enqueuing, queue empty reports %d\n", isRoomLLEmpty(searchQ));
+                            }//check about search limits
+                        }//room can still be searched
+                    }//room is a neighbor
 
-                        if(foundTreasure >= maxTreasure)
-                        {
-                            done = true;
-                            puts("Done by treasure");
-                        }
-                        if (searchedRooms >= maxRooms)
-                        {
-                            done = true;
-                            puts("Done by rooms");
-                        }
-                    }//scan for all possible rooms to search from this room
-                    //time to get the next room
-                    if(isRoomLLEmpty(searchQ))
+                    if(foundTreasure >= maxTreasure)
                     {
                         done = true;
-                        puts("Done by queue empty");
+                        puts("Done by treasure");
                     }
-                    if(!done)
+                    if (searchedRooms >= maxRooms)
                     {
-                        puts("Invoking  dequeue");fflush(stdout);
-                        roomBeingSearchedP = dequeueLIFO(searchQ);
-
+                        done = true;
+                        puts("Done by rooms");
                     }
-                }//while search is not done
-            }
+                }//scan for all possible rooms to search from this room
+                //time to get the next room
+                if(isRoomLLEmpty(searchQ))
+                {
+                    done = true;
+                    puts("Done by queue empty");
+                }
+                if(!done)
+                {
+                    puts("Invoking dequeue");fflush(stdout);
+                    roomBeingSearchedP = dequeueLIFO(searchQ);
+
+                }
+            }//while search is not done
             //search is now done, time to print the history
             printSearchHistory(historyP);
 
             // Clean up
             deleteSearchLL(historyP);
-            deleteRoomLL(searchQ);
             for(int i = 0; i < adjMP->n; i++) {
-                Room** aRoomP = theRoomPs;
-                aRoomP = aRoomP + i;
-                free(*aRoomP);
+                Room* currRoom = theRoomPs[i];
+                RoomNode* tmp = searchQ;
+                bool isInLL = false;
+                while ( tmp != NULL && !isInLL) {
+                    if(tmp->roomP == currRoom) {
+                        isInLL = true;
+                    }
+                    tmp = (RoomNode*) tmp->next;
+                }
+                if(!isInLL) {
+                    free(theRoomPs[i]);
+                    theRoomPs[i] = NULL;
+                }
             }
+            deleteRoomLL(searchQ);
             free(adjMP->edgesP);
         }
         free(adjMP);
@@ -244,7 +232,7 @@ bool readFile(char* filename, int* nrooms, AdjMat* adjMP, Room** theRoomPs)
 		puts("Error! opening file");
 		ok = false;
 	} else {
-	    char inpPtr[30];
+	    char inpPtr[40];
 		fscanf(fp,"%s", inpPtr);
 		*nrooms = (int) strtol(inpPtr, NULL, 10);
 		adjMP->n= *nrooms;
@@ -293,23 +281,44 @@ bool readFile(char* filename, int* nrooms, AdjMat* adjMP, Room** theRoomPs)
 	return ok;
 }
 
-bool getYesNo(char* query)
-{
-   bool answer = true; //so far
-   char said = 'x';
-   do
-   {
-	 printf("%s (y/n):",query);
-     fflush(stdout);
-     fflush(stdin);
-     scanf("%c",&said);
-   }while((said!= 'y')&&(said!='n'));
-   if(said=='n')
-   {
-	   answer=false;
-   }
 
 
-   return answer;
+void getInputArgs(int* maxRooms, double* maxTreas, float* maxTreasure) {
+    char inStr[6];
+    long aL = -1L;
+    // if maxRooms still is <= 0 prompt user for maxRooms
+    while(*maxRooms <= 0 ) {
+        printf("Input Max Rooms: ");
+        fgets(inStr, sizeof(inStr), stdin);
+        // check for newline at end of input
+        if (inStr[strlen(inStr) - 1] == '\n') {
+            aL= strtol(inStr, NULL, 10);
+            *maxRooms = (int) aL;
+            printf("Number of rooms is %d\n",*maxRooms);
+            fflush(stdout);
+        } else {
+            printf("The input was too long.\n");
+            // Clear buffer (I don't like fflush)
+            char c = 'a';
+            while ((c = (char) getchar()) != '\n' && c != EOF) {}
+        }
+    }
+    // if maxTreasure still is <=0  prompt user for treasure
+    while(*maxTreasure <= 0) {
+        printf("Input Max Treasure: ");
+        fgets(inStr, sizeof(inStr), stdin);
+        // check for newline at end of input
+        if (inStr[strlen(inStr) - 1] == '\n') {
+            *maxTreas = strtod(inStr, NULL);
+            *maxTreasure = (float) *maxTreas;
+            printf("Amount of treasure is %f\n", *maxTreasure);
+            fflush(stdout);
+        } else {
+            printf("The input was too long.\n");
+            // Clear buffer (I don't like fflush)
+            char c = 'a';
+            while ((c = (char) getchar()) != '\n' && c != EOF) {}
+        }
+    }
 }
 

@@ -172,13 +172,13 @@ void printSearchHistory(SearchResultNode* hp)
     else
     {
 	    //traverse the list, printing as we go
-        float treasureSubtotal = 0.0;
+        float treasureSubtotal = 0.0f;
         int room = -1;
         SearchResultNode* temp = hp;
         while(temp->next)
         {
             room =temp->searchP->roomNumber;
-            treasureSubtotal+= temp->searchP->treasure;
+            treasureSubtotal += temp->searchP->treasure;
             printf("The room was %d, and the treasure subtotal was %f.\n", room, treasureSubtotal);
             temp=(SearchResultNode*)temp->next;
 
@@ -205,7 +205,8 @@ RoomNode* removeFromList(RoomNode* hP, Room* pP) {
         if((temp->roomP) == pP) {
             if(temp == hP) {
                 if(!(temp->next)) {
-                    hP->roomP = (Room*)0;
+                    free(hP->roomP);
+                    hP->roomP=NULL;
                 } else {
                     // free both for no mem leaks
                     free(temp->roomP);
@@ -235,6 +236,10 @@ void deleteRoomLL(RoomNode* node) {
     while (node != NULL) {
         tmp = node;
         node = (RoomNode *) node->next;
+        if(tmp->roomP != NULL) {
+            free(tmp->roomP);
+            tmp->roomP = NULL;
+        }
         free(tmp);
     }
 }

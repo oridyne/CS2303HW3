@@ -11,6 +11,7 @@
 
 #include "production.h"
 #include "AdjMat.h"
+#include <math.h>
 bool tests();
 
 bool testReadFile();
@@ -19,7 +20,6 @@ bool testMakeLList();
 bool testEnqueue();
 bool testRemoveFromList();
 bool testPrintHistory();
-
-
+bool testInputArgs();
 
 #endif /* TESTS_H_ */

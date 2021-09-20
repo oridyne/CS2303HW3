@@ -30,6 +30,7 @@ void setEdge(AdjMat* adjMP, int row, int col)
 	*(arrayBeginning + (ncols*row) +col) = 1;
 	*(arrayBeginning + (ncols*col) + row) = 1;
 }
+
 int getEdge(AdjMat* adjMP, int row, int col)
 {
 	int ncols = adjMP->n;
